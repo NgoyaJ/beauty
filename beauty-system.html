@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#7A4A2A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Beauty">
+<title>Beauty System</title>
+<style>
+:root{--s1:#FAF5EE;--s2:#EDE1CF;--acc:#7A4A2A;--onacc:#FAF5EE;--bgacc:#F2E6D8;--bacc:#B8885A;--tacc:#5C3215;--fld:#FDF9F4;--brd:#D9C5AE;--brds:#B89C7E;--tp:#2A1608;--ts:#6B4226;--tm:#9E7B5A;--bgs:#EAF0E6;--bs:#7A9E6A;--tcs:#3A5C2A;--bgw:#FBF1DC;--tw:#7A5010;--bgd:#F5EAE6;--bd:#C46A3C;--td:#8B2E0E;--r:10px;--fs:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#F0E5D4;-webkit-text-size-adjust:100%}
+body{font-family:var(--fs);overscroll-behavior:none}
+#app{max-width:480px;margin:0 auto;background:#F0E5D4;min-height:100vh;min-height:100dvh}
+select,textarea,input{font-family:inherit;outline:none}
+input[type=range]{-webkit-appearance:none;appearance:none;height:6px;background:var(--brds);border-radius:3px;width:100%}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--acc);cursor:pointer;border:none}
+input[type=checkbox]{cursor:pointer;accent-color:var(--acc);width:22px;height:22px;flex-shrink:0}
+button:disabled{opacity:.45;cursor:not-allowed}
+textarea,input[type=number],input[type=date],select{background:var(--fld);color:var(--tp);border:1.5px solid var(--brds);border-radius:var(--r);padding:10px 12px;font-size:15px;width:100%;max-width:100%}
+textarea:focus,input:focus,select:focus{border-color:var(--acc)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+'use strict';
+const{useState,useEffect}=React;
+const SK={s:"beauty:settings",e:"beauty:entries",p:"beauty:products",td:"beauty:todos"};
+const DAYS=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const LEAVE_INS=["Kinky-Curly Knot Today","SheaMoisture JBCO Leave-in","Giovanni VitaPro Fusion"];
+const STYLISTS=["Mielle Coil Custard","Creme of Nature Jelly"];
+const CRIT=[{k:"weich",l:"Weichheit",lo:"hart",hi:"sehr weich"},{k:"kaemm",l:"Kämmbarkeit",lo:"schwer",hi:"leicht"},{k:"feucht",l:"Feuchtigkeit",lo:"trocken",hi:"gut"},{k:"buildup",l:"Kein Buildup",lo:"viel",hi:"keiner"},{k:"bruch",l:"Kein Bruch",lo:"viel",hi:"keiner"}];
+const TODOS=["Dyson Airstrait kaufen (399 € – dyson.de)","Kérastase Nectar Thermique kaufen (46,30 €)","Satin / Silk Bonnet prüfen","Festen Wash-Day-Termin fixieren","5 Basis-Fotos machen (Front/Crown/Seiten/Nacken)","Kinky-Curly A/B-Test starten","Ersten monatlichen Check-in eintragen","Nach 12 Wochen: Längenmessung & Review"];
+const PACK_A=["Satin Bonnet","Leave-in (aktuell getestetes)","Styler","Hitzeschutz (Nectar Thermique)"];
+const PACK_W=["Shampoo (Balea / Clarifying)","Conditioner / Maske","Entwirrbürste","Airstrait + Ladekabel"];
+const PACK_R=["As I Am JBCO Water","Squalan / Jojoba (wenige Tropfen)"];
+const PACK_L=["Reinigungsbürste (Ersatz)","Clips / Haargummi"];
+
+// FIX: Squalan colour changed from near-invisible #D8C4A0 to readable warm brown #9E7B5A
+const OIL_RECIPES=[
+  {id:"morning",emoji:"☀️",title:"Morning Body Oil",usage:"Morgens auf leicht feuchte Haut nach der Dusche",note:"Leicht – zieht schnell ein, ideal unter Kleidung. Nur dünne Schicht.",ings:[{n:"Traubenkernöl",p:40,c:"#C8A84B"},{n:"Mandelöl",p:30,c:"#B87840"},{n:"Jojobaöl",p:15,c:"#8C5E30"},{n:"Squalan",p:15,c:"#9E7B5A"}]},
+  {id:"night",emoji:"🌙",title:"Night Body Oil",usage:"3–4× pro Woche abends auf feuchte Haut",note:"Reichhaltig – Beine, Knie, Ellenbogen, Bauch. Nicht morgens unter Kleidung.",ings:[{n:"Avocadoöl",p:30,c:"#7A9060"},{n:"Shea Oil",p:25,c:"#B89050"},{n:"Baobaböl",p:20,c:"#8C6235"},{n:"Mandelöl",p:20,c:"#B87840"},{n:"Jojobaöl",p:4,c:"#8C5E30"},{n:"Vitamin E",p:1,c:"#C8A030"}]},
+  {id:"foot",emoji:"🦶",title:"Foot Oil",usage:"2–4× pro Woche abends. Danach Baumwollsocken.",note:"Erst Fußcreme (Urea), dann Foot Oil. Fersen + Ballen massieren.",ings:[{n:"Shea Oil",p:35,c:"#B89050"},{n:"JBCO",p:30,c:"#4A2C0E"},{n:"Avocadoöl",p:20,c:"#7A9060"},{n:"Jojoba/Mandel",p:14,c:"#8C5E30"},{n:"Vitamin E",p:1,c:"#C8A030"}]},
+  {id:"cuticle",emoji:"💅",title:"Cuticle Oil",usage:"Täglich abends – 1 Tropfen pro Nagel einmassieren",note:"Nagelhaut + seitliche Nagelfalze + unter freien Nagelrand. Auch Zehennägel.",ings:[{n:"Jojobaöl",p:50,c:"#8C5E30"},{n:"Squalan",p:25,c:"#9E7B5A"},{n:"Mandelöl",p:15,c:"#B87840"},{n:"Avocadoöl",p:9,c:"#7A9060"},{n:"Vitamin E",p:1,c:"#C8A030"}]},
+  {id:"duft",emoji:"🌿",title:"Parfum Body Oil (50 ml)",usage:"Selektiv: Arme, Beine, Schultern, Dekolleté",note:"0,5 % EOs gesamt. Patch-Test! Nicht auf Gesicht, Hairline, Narben oder frisch rasiert.",ings:[{n:"Mandelöl",p:50,c:"#B87840"},{n:"Jojobaöl",p:30,c:"#8C5E30"},{n:"Squalan",p:19.5,c:"#9E7B5A"},{n:"Kamillenöl (EO)",p:0.3,c:"#4A7A38"},{n:"Rosmarinöl (EO)",p:0.2,c:"#3A6428"}]},
+];
+const OIL_PRIORITY=[{oil:"Leinöl",why:"Extrem oxidationsanfällig → sofort aufbrauchen",u:true},{oil:"Traubenkernöl",why:"Oxidiert schnell → zuerst aufbrauchen",u:true},{oil:"Avocadoöl",why:"Mittel stabil → als nächstes",u:false},{oil:"Mandelöl",why:"Mittel stabil → als nächstes",u:false},{oil:"Baobaböl",why:"Mittel stabil → als nächstes",u:false},{oil:"Raspberry Seed Oil",why:"Mittel stabil → danach",u:false},{oil:"Carrot Seed Oil",why:"Mittel stabil → danach",u:false},{oil:"Shea Oil",why:"Stabil – Füße + Night Oil",u:false},{oil:"JBCO",why:"Stabil – Füße + Augenbrauen",u:false},{oil:"Jojobaöl",why:"Sehr stabil – Nägel, Gesicht, Körper",u:false},{oil:"Squalan",why:"Sehr stabil – Gesicht + leichte Pflege",u:false},{oil:"Vitamin E",why:"Konzentriert – nur 1 % in Mischungen",u:false}];
+const DUFT_JA=["Arme","Beine","Schultern","Dekolleté"];
+const DUFT_NEIN=["Gesicht","Hairline","Narben / alte Relaxer-Stellen","Frisch rasierte Haut","Intimbereich"];
+const NOT_USE=[{item:"Senföl",r:"Kein notwendiger Einsatz – kann stark reizen"},{item:"Neemöl",r:"Nur max. 5 % verdünnt; intensiver Geruch – kein Muss"},{item:"Glycerin + Hyaluronsäure",r:"Kein DIY-Haarspray ohne Konservierungssystem"}];
+const MORGENS_G=["Wasser abspülen / milder Cleanser","Rosenwasser-Glycerin-Toner","COSRX Snail 96 Mucin","Feuchtigkeitscreme","Black Girl Sunscreen SPF 30/45"];
+const ABENDS_G=["Mild reinigen","Rosenwasser-Glycerin-Toner","COSRX Snail 96 Mucin","Feuchtigkeitscreme","1–3 Tropfen Squalan (nur wenn Haut trocken)"];
+const GESICHT_REGELN=["Kein Öl-Cleansing","Squalan nur abends, nur bei Bedarf","Teebaumöl nur punktuell stark verdünnt","Peeling-Abend: keine anderen Irritanzien kombinieren","Neues Öl: 2–3 Abende Patch-Test an kleiner Stelle"];
+
+// Clean guide data — no nested array hacks, plain strings throughout
+const GUIDES=[
+  {id:"tracking",emoji:"📊",title:"Was, Wann & Wo eintragen",
+   sections:[
+    {head:"📋 Monatlicher Check-in",steps:[
+      "Wann: Erster Wash Day des Monats (≈ alle 4 Wochen)",
+      "Wo: Log-Tab → + Monatlicher Check",
+      "Juckreiz / Trockenheit: 0 = super, 10 = schlimm",
+      "Haarbruch = kurze Stücke < 2 cm in der Bürste: wenig / mittel / viel",
+      "Style-Tage: wie viele Tage hält die Frisur ohne Neustylen",
+      "Notiz: auffällige Veränderungen, was gut oder schlecht war",
+    ]},
+    {head:"📏 Längenmessung",steps:[
+      "Wann: Alle 3 Monate – Wochen 12, 24, 36, 52",
+      "Wo: Log-Tab → + Messung",
+      "Strähne locker strecken, Lineal anlegen – nicht ziehen",
+      "4 Punkte: Front (Stirn-Mitte), Crown (Scheitel), Seite (links), Nacken",
+      "Foto mit Lineal im Bild machen für späteren Vergleich",
+    ]},
+    {head:"🧪 Leave-in AB-Test",steps:[
+      "Wann: Nach jedem Wash Day während des Tests (9 Wash Days gesamt)",
+      "Wo: AB-Test-Tab → aktives Produkt antippen → Wash Day bewerten",
+      "WDs 1–3: Kinky-Curly · WDs 4–6: SheaMoisture · WDs 7–9: Giovanni",
+      "Immer gleiche Shampoo-, Masken- und Styling-Methode beim Test",
+      "Bewertung sofort nach dem Wash Day eintragen, nicht Tage später",
+    ]},
+   ],
+   notes:["Auf dem Start-Tab siehst du automatisch ob ein Check-in oder eine Messung fällig ist."]},
+  {id:"styles",emoji:"💇",title:"Styles & Protokolle",
+   sections:[
+    {head:"💫 Finger Coils – Phase 1 (< 8 cm)",steps:[
+      "Wash Day: Haar nass, Leave-in gut einarbeiten",
+      "Section von ca. 1,5 cm nehmen",
+      "Styler (Mielle oder Creme of Nature) auf die Section",
+      "Strähne locker um den Zeigefinger wickeln",
+      "Loslassen – nicht anfassen bis vollständig luftgetrocknet",
+      "Abends Bonnet. Morgens nicht neu machen – in Ruhe lassen. Hält 5–7 Tage.",
+    ]},
+    {head:"🌀 Two-Strand Twists – Phase 2 (8–12 cm)",steps:[
+      "Section in zwei gleichgroße Hälften teilen",
+      "Etwas Leave-in + kleine Menge Camille Rose Twisting Butter",
+      "Beide Hälften umeinander wickeln – eindrehen, nicht flechten",
+      "Am Ende weiterdrehen zum Abschließen",
+      "7–10 Tage in Ruhe lassen. Abends Bonnet. Kein tägliches Neustylen.",
+    ]},
+    {head:"🔥 Airstrait Stretch – alle Phasen",steps:[
+      "Haar nass aber nicht tropfend (Mikrofaser-Tuch, nicht rubbeln)",
+      "6–8 Sections teilen",
+      "Pro Section: Leave-in → Nectar Thermique → Finger entwirren → Airstrait",
+      "Einstellung: 80 °C starten, bei sehr dichtem 4C → 110 °C. Nicht 140 °C als Standard.",
+      "1–2 Durchgänge langsam. Ziel: gestreckt, nicht glatt. Kein Öl vor dem Airstrait!",
+      "Danach stylen. Nur 1–3 Tropfen Squalan auf Enden falls nötig.",
+    ]},
+    {head:"🚫 Hairline-Regeln (immer)",steps:[
+      "Erste 1–2 cm der Front nie fest einspannen oder unter Spannung setzen",
+      "Cornrows: locker, Hairline ausgespart, kein Schmerz, kein enger Zug",
+      "Schmerz / Brennen / Ziehen = Style zu straff → sofort lockern oder neu machen",
+      "Crochet: max. 4–6 Wochen, danach 1–2 Wochen Pause vor der nächsten Installation",
+    ]},
+   ],
+   notes:[]},
+];
+
+const st={get:async k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}},set:async(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+const toDay=()=>new Date().toISOString().slice(0,10);
+const fmt=iso=>{if(!iso)return"";const d=new Date(iso+"T12:00");return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"})};
+const fmtS=iso=>{if(!iso)return"";const d=new Date(iso+"T12:00");return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})};
+
+// FIX: nextWD always returns the NEXT upcoming occurrence (≥ 1 day away)
+// isToday is checked separately in HomeTab
+function nextWD(dow){
+  const now=new Date(),d=(dow-now.getDay()+7)%7||7;
+  const next=new Date(now);next.setDate(now.getDate()+d);
+  return{days:d,iso:next.toISOString().slice(0,10)};
+}
+function calcPhase(cm){if(cm<8)return{n:1,label:"Phase 1",desc:"Short TWA & Finger Coils",styles:"Finger Coils · Gestretchter Afro · Mini Twists"};if(cm<12)return{n:2,label:"Phase 2",desc:"Two-Strand Twists",styles:"Two-Strand Twists · Twist-Out · Flat Twists"};if(cm<15)return{n:3,label:"Phase 3",desc:"Mehr Vielfalt",styles:"Mini Twists · Puffs · Crown Styles · Braid-Out"};return{n:4,label:"Phase 4",desc:"Volle Rotation",styles:"Alle Styles + kontrolliertes Crochet"}}
+function buildPack(start,end,dow){const s=new Date(start+"T12:00"),e=new Date(end+"T12:00");if(e<s)return null;const days=Math.round((e-s)/864e5)+1,wds=[];for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1))if(d.getDay()===dow)wds.push(d.toISOString().slice(0,10));return{days,wds,hasWD:wds.length>0,items:[...PACK_A.map(i=>({cat:"Immer",i})),...(wds.length>0?PACK_W.map(i=>({cat:"Wash Day",i})):[]),...(days>4?PACK_R.map(i=>({cat:"Refresh",i})):[]),...(days>7?PACK_L.map(i=>({cat:"Extras",i})):[])]}}
+function getDue(entries){
+  const now=new Date(),due=[];
+  const lastChk=entries.find(e=>e.type==="check");
+  const lastMes=entries.find(e=>e.type==="measure");
+  if(!lastChk){due.push({text:"Ersten Check-in machen",hint:"Log → + Monatlicher Check",lvl:"info"});}
+  else{const d=Math.round((now-new Date(lastChk.date+"T12:00"))/864e5);if(d>=28)due.push({text:`Check-in fällig (vor ${d} Tagen)`,hint:"Log → + Monatlicher Check",lvl:d>42?"urgent":"warn"});}
+  if(!lastMes){due.push({text:"Erste Messung: nach Woche 12",hint:"Log → + Messung",lvl:"info"});}
+  else{const d=Math.round((now-new Date(lastMes.date+"T12:00"))/864e5);if(d>=84)due.push({text:`Längenmessung fällig (vor ${Math.round(d/7)} Wochen)`,hint:"Log → + Messung",lvl:d>100?"urgent":"warn"});}
+  return due;
+}
+
+const cd=(ex={})=>({background:"var(--s1)",border:"1.5px solid var(--brd)",borderRadius:"14px",padding:"15px 17px",marginBottom:"11px",...ex});
+const cdA=(ex={})=>({background:"var(--bgacc)",border:"1.5px solid var(--bacc)",borderRadius:"14px",padding:"15px 17px",marginBottom:"11px",...ex});
+const LBL={fontSize:"12px",fontWeight:600,color:"var(--tm)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:"7px"};
+const BTN=(ex={})=>({minHeight:"48px",padding:"11px 15px",borderRadius:"var(--r)",border:"1.5px solid var(--brds)",background:"var(--s1)",color:"var(--tp)",fontSize:"15px",cursor:"pointer",fontFamily:"inherit",...ex});
+const BTNA={minHeight:"52px",padding:"13px 18px",borderRadius:"var(--r)",border:"none",background:"var(--acc)",color:"var(--onacc)",fontSize:"16px",cursor:"pointer",fontFamily:"inherit",fontWeight:600,width:"100%"};
+const SEC={fontSize:"12px",fontWeight:600,color:"var(--tm)",textTransform:"uppercase",letterSpacing:".07em",margin:"16px 0 8px"};
+const ROW={display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--brd)"};
+const INP={width:"100%",boxSizing:"border-box"};
+
+function App(){
+  const[tab,setTab]=useState("home");
+  const[loaded,setLoaded]=useState(false);
+  const[showCfg,setShowCfg]=useState(false);
+  const[settings,setSettings]=useState({washDayOfWeek:0,hairLengthCm:5});
+  const[entries,setEntries]=useState([]);
+  const[products,setProducts]=useState({currentLeaveIn:0,currentStyler:0,ratings:{}});
+  const[todoDone,setTodoDone]=useState(new Array(TODOS.length).fill(false));
+  useEffect(()=>{(async()=>{const s=await st.get(SK.s),e=await st.get(SK.e),p=await st.get(SK.p),td=await st.get(SK.td);if(s)setSettings(s);if(e)setEntries(e);if(p)setProducts(p);if(td)setTodoDone(td);setLoaded(true);})();},[]);
+  useEffect(()=>{if(loaded)st.set(SK.s,settings);},[settings,loaded]);
+  useEffect(()=>{if(loaded)st.set(SK.e,entries);},[entries,loaded]);
+  useEffect(()=>{if(loaded)st.set(SK.p,products);},[products,loaded]);
+  useEffect(()=>{if(loaded)st.set(SK.td,todoDone);},[todoDone,loaded]);
+  const addEntry=(type,data)=>setEntries(p=>[{id:Date.now().toString(),date:toDay(),type,data},...p]);
+  const exportFn=()=>{const data={version:4,exportedAt:new Date().toISOString(),settings,entries,products,todoDone};const json=JSON.stringify(data,null,2);try{const uri="data:application/json;charset=utf-8,"+encodeURIComponent(json);const a=document.createElement("a");a.href=uri;a.download=`beauty-backup-${toDay()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);}catch{prompt("Backup (kopieren):",json);}};
+  const importFn=json=>{try{const d=JSON.parse(json);if(d.settings)setSettings(d.settings);if(d.entries)setEntries(d.entries);if(d.products)setProducts(d.products);if(d.todoDone)setTodoDone(d.todoDone);return true}catch{return false}};
+  if(!loaded)return React.createElement("div",{style:{padding:"3rem",textAlign:"center",color:"var(--ts)",fontSize:"16px"}},"Wird geladen…");
+  const nwd=nextWD(settings.washDayOfWeek);
+  const ph=calcPhase(settings.hairLengthCm||5);
+  // FIX: isToday correctly detects when today IS the wash day
+  const isToday=new Date().getDay()===settings.washDayOfWeek;
+  // FIX: show today's date in the banner when today is the wash day, not next week
+  const bannerDateIso=isToday?toDay():nwd.iso;
+  const TABS=[{id:"home",e:"🏠",l:"Start"},{id:"log",e:"📋",l:"Log"},{id:"reise",e:"✈️",l:"Reise"},{id:"koerper",e:"💧",l:"Körper"},{id:"prod",e:"🧪",l:"AB-Test"},{id:"mehr",e:"···",l:"Mehr"}];
+  const E=React.createElement;
+  return E("div",{style:{fontFamily:"var(--fs)",maxWidth:"480px",margin:"0 auto",background:"#F0E5D4",minHeight:"100vh"}},
+    E("div",{style:{background:"var(--s2)",borderBottom:"1.5px solid var(--brd)",position:"sticky",top:0,zIndex:100}},
+      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px 4px",paddingTop:"calc(12px + env(safe-area-inset-top))"}},
+        E("div",null,E("div",{style:{fontSize:"10px",fontWeight:600,color:"var(--tm)",letterSpacing:".09em",textTransform:"uppercase"}},"🌿 Beauty System"),E("div",{style:{fontSize:"20px",fontWeight:700,color:"var(--tp)"}},"Mein Plan")),
+        E("button",{onClick:()=>setShowCfg(p=>!p),style:{background:"none",border:"none",cursor:"pointer",fontSize:"24px",padding:"8px",lineHeight:1}},"⚙️")),
+      E("div",{style:{display:"flex"}},TABS.map(t=>E("button",{key:t.id,onClick:()=>setTab(t.id),style:{flex:1,padding:"8px 2px 9px",background:"none",border:"none",borderBottom:tab===t.id?"3px solid var(--acc)":"3px solid transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
+        E("span",{style:{fontSize:"20px",lineHeight:1}},t.e),
+        E("span",{style:{fontSize:"10px",color:tab===t.id?"var(--acc)":"var(--tm)",fontWeight:tab===t.id?700:400}},t.l))))),
+    showCfg&&E("div",{style:{background:"var(--s1)",borderBottom:"1.5px solid var(--brd)",padding:"14px 17px"}},
+      E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},E("span",{style:{fontSize:"17px",fontWeight:600}},"Einstellungen"),E("button",{onClick:()=>setShowCfg(false),style:{background:"none",border:"none",cursor:"pointer",fontSize:"26px",color:"var(--ts)",padding:"4px",lineHeight:1}},"×")),
+      E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}},
+        E("div",{style:{minWidth:0}},E("label",{style:LBL},"Wash Day"),E("select",{value:settings.washDayOfWeek,onChange:e=>setSettings(p=>({...p,washDayOfWeek:Number(e.target.value)})),style:{width:"auto"}},DAYS.map((d,i)=>E("option",{key:i,value:i},d)))),
+        E("div",{style:{minWidth:0}},E("label",{style:LBL},"Haarlänge (cm)"),E("input",{type:"number",step:"0.5",min:"1",max:"60",value:settings.hairLengthCm||5,onChange:e=>setSettings(p=>({...p,hairLengthCm:parseFloat(e.target.value)||5})),style:{...INP,width:"90px"}})))),
+    E("div",{style:{padding:"12px 14px",paddingBottom:"calc(32px + env(safe-area-inset-bottom))"}},
+      tab==="home"    &&E(HomeTab,    {isToday,nwd,bannerDateIso,ph,settings,entries,products}),
+      tab==="log"     &&E(LogTab,     {entries,addEntry,setEntries,setSettings}),
+      tab==="reise"   &&E(ReiseTab,   {settings}),
+      tab==="koerper" &&E(KoerperTab, {}),
+      tab==="prod"    &&E(ProdukteTab,{products,setProducts}),
+      tab==="mehr"    &&E(MehrTab,    {exportFn,importFn,entries,todoDone,setTodoDone})));
+}
+
+// ── Home ──────────────────────────────────────────────────────────────────────
+function HomeTab({isToday,nwd,bannerDateIso,ph,settings,entries,products}){
+  const RULES=["Kopfhaut ~wöchentlich reinigen","Hairline nie unter Spannung setzen","Nasses Haar nur mit Slip & Sections","Hitze immer mit Hitzeschutz","Nicht täglich am Haar manipulieren"];
+  const wdsDone=Object.keys(((products.ratings||{})[products.currentLeaveIn||0])||{}).length;
+  const due=getDue(entries);
+  const E=React.createElement;
+  const DUE_BG={urgent:"var(--bgd)",warn:"var(--bgw)",info:"var(--bgacc)"};
+  const DUE_BRD={urgent:"var(--bd)",warn:"#C4A030",info:"var(--bacc)"};
+  const DUE_TC={urgent:"var(--td)",warn:"var(--tw)",info:"var(--tacc)"};
+  return E("div",null,
+    // FIX: show "Heute" + today's date when isToday, otherwise show countdown + next date
+    E("div",{style:cdA({marginTop:4})},
+      E("div",{style:{fontSize:"13px",color:"var(--tacc)",fontWeight:600,marginBottom:4}},isToday?"Heute ist Wash Day 🟢":"Nächster Wash Day"),
+      !isToday&&E("div",{style:{fontSize:"36px",fontWeight:700,color:"var(--acc)",lineHeight:1,letterSpacing:"-.02em"}},
+        `${nwd.days}`,E("span",{style:{fontSize:"20px",marginLeft:8}},nwd.days===1?"Tag":"Tage")),
+      E("div",{style:{fontSize:"15px",color:"var(--tacc)",marginTop:4,fontWeight:500}},
+        `${DAYS[settings.washDayOfWeek]}, ${fmtS(bannerDateIso)}`)),
+
+    due.length>0&&E("div",null,
+      E("div",{style:SEC},"⏰ Erinnerungen"),
+      due.map((d,i)=>E("div",{key:i,style:{background:DUE_BG[d.lvl],border:`1.5px solid ${DUE_BRD[d.lvl]}`,borderRadius:"12px",padding:"12px 16px",marginBottom:8}},
+        E("div",{style:{fontSize:"15px",fontWeight:600,color:DUE_TC[d.lvl]}},d.text),
+        E("div",{style:{fontSize:"13px",color:"var(--tm)",marginTop:3}},d.hint)))),
+    due.length===0&&entries.length>0&&E("div",{style:{...cd({background:"var(--bgs)",border:"1.5px solid var(--bs)",padding:"10px 16px"}),fontSize:"14px",color:"var(--tcs)",marginTop:4}},"✓ Alles aktuell – nichts fällig"),
+
+    E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:11,marginTop:4}},
+      E("div",{style:cd({marginBottom:0})},E("div",{style:LBL},"Haarphase"),E("div",{style:{fontSize:"16px",fontWeight:700}},"Phase ",ph.n),E("div",{style:{fontSize:"13px",color:"var(--ts)",marginTop:3}},`${settings.hairLengthCm||5} cm`),E("div",{style:{fontSize:"12px",color:"var(--tm)",marginTop:2}},ph.desc)),
+      E("div",{style:cd({marginBottom:0})},E("div",{style:LBL},"Leave-in Test"),E("div",{style:{fontSize:"14px",fontWeight:700,lineHeight:1.2}},(LEAVE_INS[products.currentLeaveIn||0]||"").split(" ").slice(0,2).join(" ")),E("div",{style:{fontSize:"13px",color:"var(--ts)",marginTop:4}},`${wdsDone}/3 Wash Days`))),
+
+    E("div",{style:cd({padding:"13px 16px"})},E("div",{style:LBL},"Styles jetzt"),E("div",{style:{fontSize:"14px",color:"var(--ts)",lineHeight:1.5}},ph.styles)),
+    E("div",{style:SEC},"Letzte Einträge"),
+    entries.length===0?E("div",{style:{fontSize:"15px",color:"var(--tm)",textAlign:"center",padding:"14px 0"}},"Noch keine Einträge. Im Log-Tab beginnen."):entries.slice(0,4).map(e=>E("div",{key:e.id,style:{...ROW,fontSize:"15px"}},E("span",{style:{color:"var(--ts)"}},e.type==="check"?"Check-in":e.type==="measure"?"Messung":"Notiz"),E("span",{style:{color:"var(--tm)",fontSize:"13px"}},fmt(e.date)))),
+    E("div",{style:SEC},"5 Unverhandelbare Regeln"),
+    E("div",{style:cd()},RULES.map((r,i)=>E("div",{key:i,style:{display:"flex",gap:12,padding:"9px 0",borderBottom:i<4?"1px solid var(--brd)":"none",fontSize:"15px",alignItems:"flex-start"}},E("span",{style:{color:"var(--acc)",fontWeight:700,minWidth:16,marginTop:1}},`${i+1}.`),E("span",{style:{color:"var(--ts)",lineHeight:1.4}},r)))));
+}
+
+// ── Log ───────────────────────────────────────────────────────────────────────
+function LogTab({entries,addEntry,setEntries,setSettings}){
+  const[mode,setMode]=useState("list");const[f,setF]=useState({});const sf=(k,v)=>setF(p=>({...p,[k]:v}));const E=React.createElement;
+  const FLD=(lbl,nd)=>E("div",{style:{marginBottom:14}},E("label",{style:{...LBL,textTransform:"none",fontSize:"14px",marginBottom:6}},lbl),nd);
+  const TOG=(k,vs)=>E("div",{style:{display:"flex",gap:8}},vs.map(v=>E("button",{key:v,onClick:()=>sf(k,v),style:BTN({flex:1,background:f[k]===v?"var(--bgacc)":"",color:f[k]===v?"var(--acc)":"",borderColor:f[k]===v?"var(--bacc)":"",fontWeight:f[k]===v?700:400})},v)));
+  const save=()=>{if(mode==="check")addEntry("check",{juckreiz:Number(f.juckreiz||0),trockenheit:Number(f.trockenheit||0),breakage:f.breakage||"wenig",styleDays:f.styleDays||"",produktfilm:f.produktfilm||"nein",notiz:f.notiz||""});else if(mode==="measure"){const vs=[f.front,f.crown,f.seite,f.nacken].filter(Boolean).map(Number);if(vs.length){const avg=Math.round(vs.reduce((a,b)=>a+b,0)/vs.length*10)/10;setSettings(p=>({...p,hairLengthCm:avg}));}addEntry("measure",{front:f.front||"",crown:f.crown||"",seite:f.seite||"",nacken:f.nacken||"",notiz:f.notiz||""});}else addEntry("note",{text:f.text||""});setF({});setMode("list");};
+  if(mode==="list")return E("div",null,
+    E("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}},["+ Monatlicher Check","+ Messung","+ Notiz"].map((l,i)=>E("button",{key:i,style:BTN(),onClick:()=>setMode(["check","measure","note"][i])},l))),
+    E("div",{style:SEC},`${entries.length} Einträge`),
+    entries.length===0&&E("div",{style:{fontSize:"15px",color:"var(--tm)",textAlign:"center",padding:"18px"}},"Noch keine Einträge."),
+    entries.map(e=>E("div",{key:e.id,style:cd({padding:"12px 15px",marginBottom:9})},
+      E("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6,alignItems:"center"}},
+        E("span",{style:{fontSize:"14px",fontWeight:700,color:"var(--acc)"}},e.type==="check"?"Monatlicher Check":e.type==="measure"?"Längenmessung":"Notiz"),
+        E("div",{style:{display:"flex",gap:12,alignItems:"center"}},E("span",{style:{fontSize:"13px",color:"var(--tm)"}},fmt(e.date)),E("button",{onClick:()=>setEntries(p=>p.filter(x=>x.id!==e.id)),style:{background:"none",border:"none",cursor:"pointer",fontSize:"22px",color:"var(--td)",padding:0,lineHeight:1}},"×"))),
+      e.type==="check"&&E("div",{style:{fontSize:"14px",color:"var(--ts)",lineHeight:1.5}},`Juckreiz: ${e.data.juckreiz}/10 · Trockenheit: ${e.data.trockenheit}/10 · Bruch: ${e.data.breakage} · Style: ${e.data.styleDays}d`,e.data.notiz&&E("div",{style:{marginTop:4}},e.data.notiz)),
+      e.type==="measure"&&E("div",{style:{fontSize:"14px",color:"var(--ts)"}},`Front: ${e.data.front||"–"}cm · Crown: ${e.data.crown||"–"}cm · Seite: ${e.data.seite||"–"}cm · Nacken: ${e.data.nacken||"–"}cm`),
+      e.type==="note"&&E("div",{style:{fontSize:"14px",color:"var(--ts)"}},e.data.text))));
+  return E("div",null,E("button",{onClick:()=>{setMode("list");setF({});},style:BTN({marginBottom:14})},"← Zurück"),
+    mode==="check"&&E("div",null,E("div",{style:cd()},E("div",{style:LBL},`Monatlicher Check · ${toDay()}`),
+      E("div",{style:{fontSize:"13px",color:"var(--tm)",marginBottom:14,lineHeight:1.5,padding:"10px 14px",background:"var(--bgacc)",borderRadius:"var(--r)"}},"Erster Wash Day des Monats. Juckreiz/Trockenheit: 0=super, 10=schlimm. Haarbruch = kurze Stücke < 2cm in der Bürste."),
+      [["juckreiz","Juckreiz (0=keiner, 10=stark)"],["trockenheit","Trockenheit (0=gut, 10=sehr trocken)"]].map(([k,l])=>FLD(`${l}: ${f[k]||0}`,E("input",{type:"range",min:0,max:10,step:1,value:f[k]||0,onChange:e=>sf(k,Number(e.target.value)),style:{width:"100%"}}))),
+      FLD("Haarbruch",TOG("breakage",["wenig","mittel","viel"])),
+      FLD("Style hält wie viele Tage?",E("input",{type:"number",min:1,max:14,value:f.styleDays||"",onChange:e=>sf("styleDays",e.target.value),style:{...INP,width:"90px"},placeholder:"z.B. 5"})),
+      FLD("Produktfilm spürbar?",TOG("produktfilm",["ja","nein"])),
+      FLD("Notiz",E("textarea",{value:f.notiz||"",onChange:e=>sf("notiz",e.target.value),style:{...INP,height:70,resize:"vertical"},placeholder:"Auffälligkeiten, Veränderungen…"}))),E("button",{style:BTNA,onClick:save},"Speichern")),
+    mode==="measure"&&E("div",null,E("div",{style:cd()},E("div",{style:LBL},`Längenmessung · ${toDay()} · cm gestreckt`),
+      E("div",{style:{fontSize:"13px",color:"var(--tm)",marginBottom:14,lineHeight:1.5,padding:"10px 14px",background:"var(--bgacc)",borderRadius:"var(--r)"}},"Alle 3 Monate (Wochen 12, 24, 36, 52). Strähne locker strecken, Lineal anlegen. Foto mit Lineal im Bild für Vergleich."),
+      [["front","Front (Stirn-Mitte)"],["crown","Crown (Scheitel)"],["seite","Seite (links)"],["nacken","Nacken"]].map(([k,l])=>FLD(l,E("input",{type:"number",step:"0.5",value:f[k]||"",onChange:e=>sf(k,e.target.value),style:{...INP,width:"90px"},placeholder:"cm"}))),
+      FLD("Notiz",E("textarea",{value:f.notiz||"",onChange:e=>sf("notiz",e.target.value),style:{...INP,height:55,resize:"vertical"}}))),E("button",{style:BTNA,onClick:save},"Speichern")),
+    mode==="note"&&E("div",null,E("div",{style:cd()},E("div",{style:{...LBL,textTransform:"none",fontSize:"15px",marginBottom:8}},`Notiz · ${toDay()}`),E("textarea",{value:f.text||"",onChange:e=>sf("text",e.target.value),style:{...INP,height:130,resize:"vertical"},placeholder:"Beobachtungen, Erkenntnisse, Fragen…"})),E("button",{style:BTNA,onClick:save},"Speichern")));
+}
+
+// ── Reise ─────────────────────────────────────────────────────────────────────
+// FIX: switched from 2-column grid to vertical stacked layout → no overflow possible
+function ReiseTab({settings}){
+  const[start,setStart]=useState("");const[end,setEnd]=useState("");const[result,setResult]=useState(null);const[checked,setChecked]=useState({});
+  const E=React.createElement;const CC={"Immer":"var(--acc)","Wash Day":"var(--tw)","Refresh":"var(--ts)","Extras":"var(--tm)"};
+  return E("div",null,
+    E("div",{style:cd()},E("div",{style:LBL},"Reisedaten"),
+      E("div",{style:{display:"flex",gap:10,marginBottom:14}},
+        E("div",{style:{flex:1,minWidth:0}},E("label",{style:LBL},"Abreise"),E("input",{type:"date",value:start,onChange:e=>setStart(e.target.value),style:{...INP}})),
+        E("div",{style:{flex:1,minWidth:0}},E("label",{style:LBL},"Rückkehr"),E("input",{type:"date",value:end,onChange:e=>setEnd(e.target.value),style:{...INP}}))),
+      E("button",{style:BTNA,onClick:()=>{const r=buildPack(start,end,settings.washDayOfWeek);setResult(r);setChecked({});},disabled:!start||!end},"Packliste berechnen")),
+    result&&E("div",null,
+      E("div",{style:cd()},E("div",{style:{fontSize:"17px",fontWeight:700}},`${result.days} Tage · ${result.wds.length} Wash Day${result.wds.length!==1?"s":""}`),result.wds.length>0?E("div",{style:{marginTop:8,display:"flex",flexWrap:"wrap",gap:6}},result.wds.map(d=>E("span",{key:d,style:{fontSize:"13px",background:"var(--bgw)",color:"var(--tw)",borderRadius:"var(--r)",padding:"4px 10px",fontWeight:600}},`Wash Day: ${fmtS(d)}`))):E("div",{style:{fontSize:"14px",color:"var(--tcs)",marginTop:6,fontWeight:500}},"Kein Wash Day – nur Basics nötig")),
+      ["Immer","Wash Day","Refresh","Extras"].map(cat=>{const items=result.items.map((it,idx)=>({...it,idx})).filter(it=>it.cat===cat);if(!items.length)return null;return E("div",{key:cat,style:{marginBottom:8}},E("div",{style:{fontSize:"12px",fontWeight:700,color:CC[cat],textTransform:"uppercase",letterSpacing:".07em",marginBottom:6}},cat),E("div",{style:cd()},items.map(item=>E("label",{key:item.idx,style:{display:"flex",alignItems:"center",gap:14,padding:"12px 0",borderBottom:"1px solid var(--brd)",cursor:"pointer",fontSize:"15px",color:checked[item.idx]?"var(--tm)":"var(--tp)",textDecoration:checked[item.idx]?"line-through":"none"}},E("input",{type:"checkbox",checked:!!checked[item.idx],onChange:()=>setChecked(p=>({...p,[item.idx]:!p[item.idx]}))}),item.i))));}),
+      E("div",{style:{fontSize:"13px",color:"var(--tm)",padding:"6px 0"}},"Airstrait: 830g – bei Handgepäck beachten.")));
+}
+
+// ── Körper ────────────────────────────────────────────────────────────────────
+function KoerperTab(){
+  const[sub,setSub]=useState("plan");const[openR,setOpenR]=useState(null);const E=React.createElement;
+  const SUBS=[{id:"plan",l:"Tagesplan"},{id:"gesicht",l:"Gesicht"},{id:"oele",l:"Öle"},{id:"verbrauch",l:"Verbrauch"}];
+  const Stp=(n,txt)=>E("div",{style:{display:"flex",gap:12,padding:"8px 0",borderBottom:"1px solid var(--brd)",fontSize:"15px",alignItems:"flex-start"}},E("span",{style:{color:"var(--acc)",fontWeight:700,minWidth:22,marginTop:1}},n),E("span",{style:{color:"var(--ts)",lineHeight:1.4}},txt));
+  const Blk=(emoji,title,color,children)=>E("div",{style:{marginBottom:12}},E("div",{style:{fontSize:"13px",fontWeight:700,color,textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}},`${emoji} ${title}`),E("div",{style:cd({padding:"4px 16px"})},children));
+  const PlanSec=()=>E("div",null,
+    Blk("☀️","Morgens — 5–8 Min","var(--tw)",E("div",null,E("div",{style:{fontSize:"12px",fontWeight:600,color:"var(--tm)",padding:"8px 0 4px",textTransform:"uppercase",letterSpacing:".06em"}},"Gesicht"),MORGENS_G.map((s,i)=>Stp(i+1,s)),E("div",{style:{fontSize:"12px",fontWeight:600,color:"var(--tm)",padding:"10px 0 4px",textTransform:"uppercase",letterSpacing:".06em"}},"Körper (nach Dusche)"),Stp("•","Morning Body Oil auf leicht feuchte Haut – dünne Schicht"))),
+    Blk("🌙","Abends — 5–7 Min","var(--ts)",E("div",null,E("div",{style:{fontSize:"12px",fontWeight:600,color:"var(--tm)",padding:"8px 0 4px",textTransform:"uppercase",letterSpacing:".06em"}},"Gesicht"),ABENDS_G.map((s,i)=>Stp(i+1,s)),E("div",{style:{fontSize:"12px",fontWeight:600,color:"var(--tm)",padding:"10px 0 4px",textTransform:"uppercase",letterSpacing:".06em"}},"Täglich — Nägel"),Stp("•","Cuticle Oil – 1 Tropfen pro Nagel, ~1 Min"),E("div",{style:{fontSize:"12px",fontWeight:600,color:"var(--tm)",padding:"10px 0 4px",textTransform:"uppercase",letterSpacing:".06em"}},"2–4× pro Woche — Füße"),Stp("•","Fußcreme (Urea) → Foot Oil → Baumwollsocken"),E("div",{style:{fontSize:"12px",fontWeight:600,color:"var(--tm)",padding:"10px 0 4px",textTransform:"uppercase",letterSpacing:".06em"}},"3–4× pro Woche — Körper"),Stp("•","Night Body Oil nach Dusche auf feuchte Haut"))),
+    Blk("📅","Wöchentlich","var(--acc)",E("div",null,Stp("So","Haar Wash Day 16:00–18:00 Uhr"),Stp("+","1× mildes Gesichtspeeling (nicht mit Teebaum / starken Wirkstoffen am selben Abend)"))),
+    Blk("📸","Monatlich (1. Sonntag)","var(--tcs)",E("div",null,Stp("•","Hairline-Fotos + Front/Seiten/Crown/Back"),Stp("•","Kopfhautcheck, Enden + Breakage einschätzen"),Stp("•","Alle 4–6 Wochen: Clarifying Shampoo falls nötig"),Stp("•","Alle 3 Monate: Längenmessung an 4 festen Punkten"))));
+  const GesichtSec=()=>E("div",null,
+    E("div",{style:{...cd({background:"var(--bgacc)",border:"1.5px solid var(--bacc)"})}},E("div",{style:{fontSize:"14px",fontWeight:700,color:"var(--acc)",marginBottom:10}},"🧪 Rosenwasser-Glycerin-Toner"),E("div",{style:{fontSize:"15px",fontWeight:600,color:"var(--tp)",marginBottom:6}},"95 ml Rosenwasser + 5 ml Glycerin"),E("div",{style:{fontSize:"13px",color:"var(--ts)",lineHeight:1.6}},"= 5 % Glycerin. Bei Klebegefühl: 97 ml + 3 ml.",E("br",null),"Immer kleine Chargen (30–50 ml) frisch anmischen.",E("br",null),"Verbrauch: ~57 ml Rosenwasser + 3 ml Glycerin/Monat.")),
+    E("div",{style:SEC},"Morgen-Routine"),E("div",{style:cd({padding:"4px 16px"})},MORGENS_G.map((s,i)=>Stp(i+1,s))),
+    E("div",{style:SEC},"Abend-Routine"),E("div",{style:cd({padding:"4px 16px"})},ABENDS_G.map((s,i)=>Stp(i+1,s))),
+    E("div",{style:SEC},"Regeln"),E("div",{style:cd({padding:"4px 16px"})},GESICHT_REGELN.map((r,i)=>E("div",{key:i,style:{display:"flex",gap:12,padding:"8px 0",borderBottom:i<GESICHT_REGELN.length-1?"1px solid var(--brd)":"none",fontSize:"14px",color:"var(--ts)",alignItems:"flex-start",lineHeight:1.4}},E("span",{style:{color:"var(--acc)",minWidth:14,marginTop:1}},"·"),E("span",null,r)))));
+  const OeleSec=()=>E("div",null,E("div",{style:{fontSize:"13px",color:"var(--tm)",marginBottom:10}},"Tippen zum Aufklappen"),OIL_RECIPES.map(r=>E("div",{key:r.id,style:cd({cursor:"pointer",padding:"13px 16px",marginBottom:10}),onClick:()=>setOpenR(openR===r.id?null:r.id)},
+    E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},E("div",null,E("div",{style:{fontSize:"16px",fontWeight:700,color:"var(--tp)"}},`${r.emoji} ${r.title}`),E("div",{style:{fontSize:"13px",color:"var(--ts)",marginTop:3,lineHeight:1.4}},r.usage)),E("span",{style:{fontSize:"16px",color:"var(--tm)",marginLeft:8}},openR===r.id?"▲":"▼")),
+    openR===r.id&&E("div",{style:{marginTop:14,paddingTop:14,borderTop:"1px solid var(--brd)"}},
+      r.ings.map(ing=>E("div",{key:ing.n,style:{marginBottom:10}},
+        E("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},E("span",{style:{fontSize:"14px",color:"var(--ts)",fontWeight:500}},ing.n),E("span",{style:{fontSize:"14px",fontWeight:700}},`${ing.p}%`)),
+        E("div",{style:{height:8,background:"var(--brd)",borderRadius:4}},E("div",{style:{height:"100%",width:`${Math.min(ing.p,100)}%`,background:ing.c,borderRadius:4}})))),
+      E("div",{style:{marginTop:12,fontSize:"13px",color:"var(--tm)",fontStyle:"italic",lineHeight:1.5}},r.note)))));
+  const VerbrauchSec=()=>E("div",null,
+    E("div",{style:SEC},"Verbrauchsreihenfolge"),E("div",{style:cd()},OIL_PRIORITY.map((item,i)=>E("div",{key:i,style:{display:"flex",gap:12,padding:"8px 0",borderBottom:i<OIL_PRIORITY.length-1?"1px solid var(--brd)":"none",alignItems:"flex-start"}},E("span",{style:{fontSize:"14px",fontWeight:700,color:"var(--tm)",minWidth:22,marginTop:1}},`${i+1}.`),E("div",null,E("div",{style:{fontSize:"15px",fontWeight:600,color:item.u?"var(--acc)":"var(--tp)"}},item.oil,item.u&&E("span",{style:{fontSize:"11px",background:"var(--bgd)",color:"var(--td)",borderRadius:"var(--r)",padding:"2px 6px",marginLeft:6,fontWeight:700}},"ZUERST")),E("div",{style:{fontSize:"13px",color:"var(--tm)",marginTop:2}},item.why))))),
+    E("div",{style:SEC},"Glycerin extra"),E("div",{style:cd()},E("div",{style:{fontSize:"14px",color:"var(--ts)",lineHeight:1.6}},"· 1 Tropfen in Bodylotion-Portion mischen (bei Trockenheit)",E("br",null),"· 1–2 Tropfen in Handcreme-Portion abends")),
+    E("div",{style:SEC},"Duft-Regel"),E("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}},
+      E("div",{style:cd({marginBottom:0,background:"var(--bgs)",border:"1.5px solid var(--bs)"})},E("div",{style:{fontSize:"12px",fontWeight:700,color:"var(--tcs)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}},"✓ Ja"),DUFT_JA.map((s,i)=>E("div",{key:i,style:{fontSize:"14px",color:"var(--tcs)",padding:"3px 0"}},s))),
+      E("div",{style:cd({marginBottom:0,background:"var(--bgd)",border:"1.5px solid var(--bd)"})},E("div",{style:{fontSize:"12px",fontWeight:700,color:"var(--td)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8}},"✕ Nicht"),DUFT_NEIN.map((s,i)=>E("div",{key:i,style:{fontSize:"14px",color:"var(--td)",padding:"3px 0"}},s)))),
+    E("div",{style:SEC},"Nicht verwenden"),E("div",{style:cd()},NOT_USE.map((item,i)=>E("div",{key:i,style:{display:"flex",gap:10,padding:"9px 0",borderBottom:i<NOT_USE.length-1?"1px solid var(--brd)":"none",alignItems:"flex-start"}},E("span",{style:{fontSize:"15px",minWidth:20}},"✕"),E("div",null,E("div",{style:{fontSize:"15px",fontWeight:600,color:"var(--td)"}},item.item),E("div",{style:{fontSize:"13px",color:"var(--tm)",marginTop:2}},item.r))))));
+  return E("div",null,E("div",{style:{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}},SUBS.map(s=>E("button",{key:s.id,onClick:()=>setSub(s.id),style:BTN({padding:"10px 14px",background:sub===s.id?"var(--bgacc)":"",color:sub===s.id?"var(--acc)":"",borderColor:sub===s.id?"var(--bacc)":"",fontWeight:sub===s.id?700:400})},s.l))),
+  sub==="plan"&&E(PlanSec,null),sub==="gesicht"&&E(GesichtSec,null),sub==="oele"&&E(OeleSec,null),sub==="verbrauch"&&E(VerbrauchSec,null));
+}
+
+// ── AB-Test ───────────────────────────────────────────────────────────────────
+function ProdukteTab({products,setProducts}){
+  const[rating,setRating]=useState({});const[wdNum,setWdNum]=useState(1);const E=React.createElement;
+  const curLI=products.currentLeaveIn??0,curSt=products.currentStyler??0,ratings=products.ratings||{},curR=ratings[curLI]||{},wdsDone=Object.keys(curR).length;
+  const allTested=LEAVE_INS.every((_,i)=>Object.keys(ratings[i]||{}).length>=3);
+  const getAvg=idx=>{const r=ratings[idx]||{},v=Object.values(r).flatMap(wd=>CRIT.map(c=>wd[c.k]).filter(Boolean).map(Number));return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):"–"};
+  const winner=()=>{const sc=LEAVE_INS.map((_,i)=>{const r=ratings[i]||{},v=Object.values(r).flatMap(wd=>CRIT.map(c=>wd[c.k]).filter(Boolean).map(Number));return v.length?v.reduce((a,b)=>a+b,0)/v.length:0});return sc.indexOf(Math.max(...sc))};
+  const saveR=()=>{if(!Object.keys(rating).length)return;setProducts(p=>({...p,ratings:{...(p.ratings||{}),[curLI]:{...curR,[`wd${wdNum}`]:{...rating}}}}));setRating({})};
+  return E("div",null,
+    E("div",{style:{...cd({background:"var(--bgacc)",border:"1.5px solid var(--bacc)",padding:"12px 16px"}),fontSize:"13px",color:"var(--ts)",lineHeight:1.6,marginBottom:14}},
+      E("div",{style:{fontWeight:700,color:"var(--acc)",marginBottom:6}},"📋 So funktioniert der Test"),
+      "WDs 1–3: Kinky-Curly · WDs 4–6: SheaMoisture · WDs 7–9: Giovanni. Nach jedem Wash Day Produkt antippen und alle 5 Kriterien bewerten. Immer gleiche Methode!"),
+    E("div",{style:SEC},"Aktives Produkt"),
+    LEAVE_INS.map((l,i)=>E("button",{key:i,onClick:()=>setProducts(p=>({...p,currentLeaveIn:i})),style:BTN({width:"100%",textAlign:"left",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",background:i===curLI?"var(--bgacc)":"",color:i===curLI?"var(--acc)":"",borderColor:i===curLI?"var(--bacc)":"",fontWeight:i===curLI?700:400})},E("span",{style:{fontSize:"15px"}},l),E("span",{style:{fontSize:"13px",opacity:.8}},`${Object.keys(ratings[i]||{}).length}/3 · Ø ${getAvg(i)}`))),
+    wdsDone<3&&E("div",{style:cd()},E("div",{style:LBL},`Wash Day bewerten · ${LEAVE_INS[curLI].split(" ")[0]}`),
+      E("div",{style:{display:"flex",gap:8,alignItems:"center",marginBottom:14}},E("span",{style:{fontSize:"15px",color:"var(--ts)"}},"Wash Day:"),[1,2,3].map(n=>E("button",{key:n,onClick:()=>setWdNum(n),style:BTN({minHeight:44,padding:"10px 14px",background:wdNum===n?"var(--bgacc)":"",color:wdNum===n?"var(--acc)":"",fontWeight:wdNum===n?700:400})},n))),
+      CRIT.map(cr=>E("div",{key:cr.k,style:{marginBottom:12}},E("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},E("label",{style:{fontSize:"15px",color:"var(--ts)",fontWeight:500}},cr.l),E("span",{style:{fontSize:"14px",color:"var(--tm)",fontWeight:600}},`${rating[cr.k]||3}/5`)),E("input",{type:"range",min:1,max:5,step:1,value:rating[cr.k]||3,onChange:e=>setRating(r=>({...r,[cr.k]:Number(e.target.value)})),style:{width:"100%",marginBottom:4}}),E("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"12px",color:"var(--tm)"}},E("span",null,cr.lo),E("span",null,cr.hi)))),
+      E("button",{style:BTNA,onClick:saveR},"Bewertung speichern")),
+    wdsDone>=3&&!allTested&&E("div",{style:{...cd({background:"var(--bgs)",border:"1.5px solid var(--bs)"}),fontSize:"15px",color:"var(--tcs)"}},
+      "3 Wash Days abgeschlossen!",E("button",{onClick:()=>setProducts(p=>({...p,currentLeaveIn:Math.min((p.currentLeaveIn||0)+1,LEAVE_INS.length-1)})),style:BTN({marginTop:10,width:"100%",color:"var(--tcs)",borderColor:"var(--bs)",fontWeight:600})},`Weiter → ${LEAVE_INS[Math.min(curLI+1,LEAVE_INS.length-1)]}`)),
+    allTested&&E("div",{style:{...cd({background:"var(--bgs)",border:"1.5px solid var(--bs)"}),fontSize:"15px",color:"var(--tcs)"}},
+      "Alle 3 getestet! Empfehlung: ",E("strong",null,LEAVE_INS[winner()]),` (Ø ${getAvg(winner())})`),
+    E("div",{style:SEC},"Styler-Test"),
+    E("div",{style:{...cd({background:"var(--bgacc)",border:"1.5px solid var(--bacc)",padding:"10px 16px"}),fontSize:"13px",color:"var(--ts)",marginBottom:10}},"Je 3 Styles pro Produkt testen, dann Gewinner wählen."),
+    E("div",{style:{display:"flex",gap:8}},STYLISTS.map((s,i)=>E("button",{key:i,onClick:()=>setProducts(p=>({...p,currentStyler:i})),style:BTN({flex:1,minHeight:52,background:i===curSt?"var(--bgacc)":"",color:i===curSt?"var(--acc)":"",borderColor:i===curSt?"var(--bacc)":"",fontWeight:i===curSt?700:400})},s.split(" ").slice(0,2).join(" ")))));
+}
+
+// ── Mehr ──────────────────────────────────────────────────────────────────────
+function MehrTab({exportFn,importFn,entries,todoDone,setTodoDone}){
+  const[sub,setSub]=useState("anleitung");const[openG,setOpenG]=useState(null);
+  const[importText,setImportText]=useState("");const[msg,setMsg]=useState("");
+  const E=React.createElement;
+  const checks=entries.filter(e=>e.type==="check").length,measures=entries.filter(e=>e.type==="measure").length;
+  const SUBS=[{id:"anleitung",l:"📖 Anleitung"},{id:"todos",l:"✓ To-Dos"},{id:"export",l:"💾 Export"}];
+  const doImport=()=>{const ok=importFn(importText);setMsg(ok?"✓ Import erfolgreich!":"✕ Fehler: JSON ungültig.");if(ok)setImportText("")};
+
+  // Clean guide card renderer using the GUIDES data structure (plain strings, no nested arrays)
+  const GCard=(guide)=>E("div",{key:guide.id,style:cd({cursor:"pointer",padding:"13px 16px",marginBottom:10}),onClick:()=>setOpenG(openG===guide.id?null:guide.id)},
+    E("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+      E("span",{style:{fontSize:"16px",fontWeight:700,color:"var(--tp)"}},`${guide.emoji} ${guide.title}`),
+      E("span",{style:{fontSize:"16px",color:"var(--tm)",marginLeft:8}},openG===guide.id?"▲":"▼")),
+    openG===guide.id&&E("div",{style:{marginTop:14,paddingTop:14,borderTop:"1px solid var(--brd)"}},
+      guide.sections.map((sec,si)=>E("div",{key:si,style:{marginTop:si>0?14:0}},
+        E("div",{style:{fontSize:"13px",fontWeight:700,color:"var(--acc)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}},sec.head),
+        sec.steps.map((step,i)=>E("div",{key:i,style:{display:"flex",gap:10,padding:"6px 0",borderBottom:i<sec.steps.length-1?"1px solid var(--brd)":"none",fontSize:"14px",color:"var(--ts)",alignItems:"flex-start",lineHeight:1.4}},
+          E("span",{style:{color:"var(--acc)",fontWeight:600,minWidth:22,marginTop:1,flexShrink:0}},`${i+1}.`),
+          E("span",null,step))))),
+      guide.notes.length>0&&guide.notes.map((note,i)=>E("div",{key:i,style:{fontSize:"13px",color:"var(--tm)",fontStyle:"italic",lineHeight:1.5,marginTop:12}},note))));
+
+  const AnleitungSec=()=>E("div",null,
+    E("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}},[["Einträge",entries.length],["Checks",checks],["Messungen",measures]].map(([l,v])=>E("div",{key:l,style:{background:"var(--s1)",border:"1.5px solid var(--brd)",borderRadius:"var(--r)",padding:"14px 10px",textAlign:"center"}},E("div",{style:{fontSize:"28px",fontWeight:700,color:"var(--acc)"}},v),E("div",{style:{fontSize:"13px",color:"var(--tm)",marginTop:4}},l)))),
+    E("div",{style:SEC},"Tracking-Guide"),GUIDES.filter(g=>g.id==="tracking").map(GCard),
+    E("div",{style:SEC},"Styling-Anleitungen"),GUIDES.filter(g=>g.id==="styles").map(GCard));
+
+  const TodosSec=()=>E("div",null,E("div",{style:cd()},TODOS.map((text,i)=>E("label",{key:i,style:{display:"flex",alignItems:"flex-start",gap:14,padding:"12px 0",borderBottom:i<TODOS.length-1?"1px solid var(--brd)":"none",cursor:"pointer",fontSize:"15px",color:todoDone[i]?"var(--tm)":"var(--ts)",textDecoration:todoDone[i]?"line-through":"none",lineHeight:1.4}},E("input",{type:"checkbox",checked:!!todoDone[i],onChange:()=>setTodoDone(p=>{const n=[...p];n[i]=!n[i];return n}),style:{marginTop:2}}),text))));
+
+  const ExportSec=()=>E("div",null,
+    E("div",{style:cd()},E("div",{style:{fontSize:"15px",color:"var(--ts)",marginBottom:14,lineHeight:1.5}},"Alle Daten als JSON exportieren und in iCloud, Google Drive oder per E-Mail sichern. Auf iOS: Datei kopieren falls Download nicht startet."),E("button",{style:BTNA,onClick:exportFn},"↓ JSON exportieren")),
+    E("div",{style:SEC},"Import / Wiederherstellen"),
+    E("div",{style:cd()},E("textarea",{value:importText,onChange:e=>setImportText(e.target.value),style:{...INP,height:80,resize:"vertical",marginBottom:10,fontSize:"14px"},placeholder:"Backup-JSON hier einfügen…"}),E("button",{style:BTN({width:"100%",minHeight:48}),onClick:doImport,disabled:!importText},"Wiederherstellen"),msg&&E("div",{style:{fontSize:"14px",color:msg.includes("✕")?"var(--td)":"var(--tcs)",marginTop:10,fontWeight:500}},msg)),
+    E("div",{style:{fontSize:"13px",color:"var(--tm)",marginTop:10,lineHeight:1.6}},"Daten werden im Browser-Speicher dieses Geräts gespeichert (localStorage). Regelmäßig exportieren!"));
+
+  return E("div",null,
+    E("div",{style:{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}},SUBS.map(s=>E("button",{key:s.id,onClick:()=>setSub(s.id),style:BTN({padding:"10px 14px",background:sub===s.id?"var(--bgacc)":"",color:sub===s.id?"var(--acc)":"",borderColor:sub===s.id?"var(--bacc)":"",fontWeight:sub===s.id?700:400})},s.l))),
+    sub==="anleitung"&&E(AnleitungSec,null),sub==="todos"&&E(TodosSec,null),sub==="export"&&E(ExportSec,null));
+}
+
+ReactDOM.render(React.createElement(App),document.getElementById("app"));
+</script>
+</body>
+</html>
